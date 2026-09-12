@@ -1,0 +1,14 @@
+services:
+  http-server-projeto-korp:
+    image: http-server-projeto-korp:local
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+      target: runtime
+    restart: unless-stopped
+    networks:
+      - korp-network
+
+networks:
+  korp-network:
+    name: korp-network
