@@ -9,6 +9,18 @@ services:
     networks:
       - korp-network
 
+  nginx:
+    image: nginx:1.30.4-trixie
+    restart: unless-stopped
+    depends_on:
+      - http-server-projeto-korp
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+    networks:
+      - korp-network
+
 networks:
   korp-network:
     name: korp-network
