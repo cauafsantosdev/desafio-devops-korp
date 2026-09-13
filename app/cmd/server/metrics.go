@@ -54,8 +54,13 @@ func (w *statusResponseWriter) Write(body []byte) (int, error) {
 	return w.ResponseWriter.Write(body)
 }
 
-func observeHTTP(path string, next http.Handler) http.Handler {
+func observeHTTP(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/metrics" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		startedAt := time.Now()
 		recorder := &statusResponseWriter{ResponseWriter: w}
 
@@ -67,13 +72,22 @@ func observeHTTP(path string, next http.Handler) http.Handler {
 		}
 
 		httpRequestsTotal.
-			WithLabelValues(r.Method, path, strconv.Itoa(statusCode)).
+			WithLabelValues(r.Method, metricPath(r.URL.Path), strconv.Itoa(statusCode)).
 			Inc()
 
 		httpRequestDuration.
-			WithLabelValues(r.Method, path).
+			WithLabelValues(r.Method, metricPath(r.URL.Path)).
 			Observe(time.Since(startedAt).Seconds())
 	})
+}
+
+func metricPath(path string) string {
+	switch path {
+	case "/projeto-korp", "/healthz":
+		return path
+	default:
+		return "unmatched"
+	}
 }
 
 func metricsHandler() http.Handler {

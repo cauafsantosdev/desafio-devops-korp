@@ -13,7 +13,7 @@ func TestProjetoKorpEndpoint(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "/projeto-korp", nil)
 	recorder := httptest.NewRecorder()
 
-	newMux().ServeHTTP(recorder, request)
+	newHandler().ServeHTTP(recorder, request)
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected status %d, got %d", http.StatusOK, recorder.Code)
@@ -50,7 +50,7 @@ func TestHealthEndpoint(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "/healthz", nil)
 	recorder := httptest.NewRecorder()
 
-	newMux().ServeHTTP(recorder, request)
+	newHandler().ServeHTTP(recorder, request)
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected status %d, got %d", http.StatusOK, recorder.Code)
@@ -67,14 +67,37 @@ func TestHealthEndpoint(t *testing.T) {
 }
 
 func TestMetricsEndpoint(t *testing.T) {
-	mux := newMux()
+	handler := newHandler()
 
-	request := httptest.NewRequest(http.MethodGet, "/projeto-korp", nil)
-	mux.ServeHTTP(httptest.NewRecorder(), request)
+	requests := []struct {
+		method string
+		path   string
+		status int
+	}{
+		{http.MethodGet, "/projeto-korp", http.StatusOK},
+		{http.MethodPost, "/projeto-korp", http.StatusMethodNotAllowed},
+		{http.MethodGet, "/rota-inexistente", http.StatusNotFound},
+	}
+
+	for _, testCase := range requests {
+		request := httptest.NewRequest(testCase.method, testCase.path, nil)
+		recorder := httptest.NewRecorder()
+		handler.ServeHTTP(recorder, request)
+
+		if recorder.Code != testCase.status {
+			t.Fatalf(
+				"%s %s: expected status %d, got %d",
+				testCase.method,
+				testCase.path,
+				testCase.status,
+				recorder.Code,
+			)
+		}
+	}
 
 	metricsRequest := httptest.NewRequest(http.MethodGet, "/metrics", nil)
 	metricsRecorder := httptest.NewRecorder()
-	mux.ServeHTTP(metricsRecorder, metricsRequest)
+	handler.ServeHTTP(metricsRecorder, metricsRequest)
 
 	if metricsRecorder.Code != http.StatusOK {
 		t.Fatalf("expected status %d, got %d", http.StatusOK, metricsRecorder.Code)
@@ -82,13 +105,20 @@ func TestMetricsEndpoint(t *testing.T) {
 
 	body := metricsRecorder.Body.String()
 
-	for _, metric := range []string{
+	for _, expected := range []string{
 		"http_server_requests_total",
 		"http_server_request_duration_seconds",
+		`http_server_requests_total{method="GET",path="/projeto-korp",status="200"}`,
+		`http_server_requests_total{method="POST",path="/projeto-korp",status="405"}`,
+		`http_server_requests_total{method="GET",path="unmatched",status="404"}`,
 	} {
-		if !strings.Contains(body, metric) {
-			t.Errorf("expected metrics response to contain %q", metric)
+		if !strings.Contains(body, expected) {
+			t.Errorf("expected metrics response to contain %q", expected)
 		}
+	}
+
+	if strings.Contains(body, `path="/metrics"`) {
+		t.Error("expected /metrics to be excluded from application request metrics")
 	}
 }
 
@@ -96,7 +126,7 @@ func TestProjetoKorpRejectsPost(t *testing.T) {
 	request := httptest.NewRequest(http.MethodPost, "/projeto-korp", nil)
 	recorder := httptest.NewRecorder()
 
-	newMux().ServeHTTP(recorder, request)
+	newHandler().ServeHTTP(recorder, request)
 
 	if recorder.Code != http.StatusMethodNotAllowed {
 		t.Fatalf(

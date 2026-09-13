@@ -34,9 +34,27 @@ services:
     networks:
       - korp-network
 
+  grafana:
+    image: grafana/grafana:13.2.1
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    networks:
+      - korp-network
+
 networks:
   korp-network:
     name: korp-network
 
 volumes:
   prometheus-data:
+  grafana-data:

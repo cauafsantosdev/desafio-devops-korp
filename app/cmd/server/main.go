@@ -18,20 +18,13 @@ type healthResponse struct {
 	Status string `json:"status"`
 }
 
-func newMux() *http.ServeMux {
+func newHandler() http.Handler {
 	mux := http.NewServeMux()
-
-	mux.Handle(
-		"GET /projeto-korp",
-		observeHTTP("/projeto-korp", http.HandlerFunc(projetoKorpHandler)),
-	)
-	mux.Handle(
-		"GET /healthz",
-		observeHTTP("/healthz", http.HandlerFunc(healthHandler)),
-	)
+	mux.HandleFunc("GET /projeto-korp", projetoKorpHandler)
+	mux.HandleFunc("GET /healthz", healthHandler)
 	mux.Handle("GET /metrics", metricsHandler())
 
-	return mux
+	return observeHTTP(mux)
 }
 
 func projetoKorpHandler(w http.ResponseWriter, _ *http.Request) {
@@ -58,7 +51,7 @@ func healthHandler(w http.ResponseWriter, _ *http.Request) {
 func main() {
 	server := &http.Server{
 		Addr:              address,
-		Handler:           newMux(),
+		Handler:           newHandler(),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
