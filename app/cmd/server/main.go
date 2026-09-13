@@ -14,9 +14,22 @@ type projetoKorpResponse struct {
 	Horario string `json:"horario"`
 }
 
+type healthResponse struct {
+	Status string `json:"status"`
+}
+
 func newMux() *http.ServeMux {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /projeto-korp", projetoKorpHandler)
+
+	mux.Handle(
+		"GET /projeto-korp",
+		observeHTTP("/projeto-korp", http.HandlerFunc(projetoKorpHandler)),
+	)
+	mux.Handle(
+		"GET /healthz",
+		observeHTTP("/healthz", http.HandlerFunc(healthHandler)),
+	)
+	mux.Handle("GET /metrics", metricsHandler())
 
 	return mux
 }
@@ -31,6 +44,14 @@ func projetoKorpHandler(w http.ResponseWriter, _ *http.Request) {
 
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		log.Printf("failed to encode response: %v", err)
+	}
+}
+
+func healthHandler(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if err := json.NewEncoder(w).Encode(healthResponse{Status: "ok"}); err != nil {
+		log.Printf("failed to encode health response: %v", err)
 	}
 }
 
