@@ -21,6 +21,22 @@ services:
     networks:
       - korp-network
 
+  prometheus:
+    image: prom/prometheus:v3.14.0
+    restart: unless-stopped
+    depends_on:
+      - http-server-projeto-korp
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks:
+      - korp-network
+
 networks:
   korp-network:
     name: korp-network
+
+volumes:
+  prometheus-data:
