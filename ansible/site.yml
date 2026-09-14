@@ -1,0 +1,8 @@
+---
+- name: Provision Projeto Korp host
+  hosts: korp
+  become: true
+  gather_facts: true
+
+  roles:
+    - docker

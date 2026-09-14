@@ -54,6 +54,7 @@ services:
 networks:
   korp-network:
     name: korp-network
+    external: true
 
 volumes:
   prometheus-data:
