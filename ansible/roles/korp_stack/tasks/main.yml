@@ -1,0 +1,80 @@
+---
+- name: Create Projeto Korp deployment directory
+  ansible.builtin.file:
+    path: "{{ korp_project_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Copy Docker Compose file
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../compose.yaml"
+    dest: "{{ korp_project_dir }}/compose.yaml"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Copy application source
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../app/"
+    dest: "{{ korp_project_dir }}/app/"
+    owner: root
+    group: root
+    mode: preserve
+
+- name: Copy NGINX configuration
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../nginx/"
+    dest: "{{ korp_project_dir }}/nginx/"
+    owner: root
+    group: root
+    mode: preserve
+
+- name: Copy Prometheus configuration
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../prometheus/"
+    dest: "{{ korp_project_dir }}/prometheus/"
+    owner: root
+    group: root
+    mode: preserve
+
+- name: Copy Grafana provisioning files
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../grafana/"
+    dest: "{{ korp_project_dir }}/grafana/"
+    owner: root
+    group: root
+    mode: preserve
+
+- name: Validate Docker Compose configuration
+  ansible.builtin.command:
+    cmd: docker compose config --quiet
+    chdir: "{{ korp_project_dir }}"
+  environment:
+    GRAFANA_ADMIN_PASSWORD: "{{ grafana_admin_password }}"
+  changed_when: false
+
+- name: Build and start Projeto Korp stack
+  ansible.builtin.command:
+    cmd: docker compose up -d --build --remove-orphans
+    chdir: "{{ korp_project_dir }}"
+  environment:
+    GRAFANA_ADMIN_PASSWORD: "{{ grafana_admin_password }}"
+  register: compose_up
+  changed_when: >-
+    'Created' in compose_up.stderr or
+    'Recreated' in compose_up.stderr or
+    'Started' in compose_up.stderr or
+    'Restarted' in compose_up.stderr
+
+- name: Show Docker Compose services
+  ansible.builtin.command:
+    cmd: docker compose ps
+    chdir: "{{ korp_project_dir }}"
+  register: compose_ps
+  changed_when: false
+
+- name: Display Docker Compose services
+  ansible.builtin.debug:
+    var: compose_ps.stdout_lines
