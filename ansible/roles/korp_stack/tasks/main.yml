@@ -78,3 +78,71 @@
 - name: Display Docker Compose services
   ansible.builtin.debug:
     var: compose_ps.stdout_lines
+
+- name: Wait for reverse proxy to become ready
+  ansible.builtin.uri:
+    url: http://127.0.0.1/healthz
+    method: GET
+    status_code: 200
+  register: korp_health
+  retries: 30
+  delay: 2
+  until: korp_health.status == 200
+
+- name: Validate Projeto Korp HTTP endpoint
+  ansible.builtin.uri:
+    url: http://127.0.0.1/projeto-korp
+    method: GET
+    return_content: true
+    status_code: 200
+  register: korp_response
+
+- name: Validate Projeto Korp response payload
+  ansible.builtin.assert:
+    that:
+      - korp_response.json.nome == "Projeto Korp"
+      - korp_response.json.horario is defined
+      - korp_response.json.horario | length > 0
+    fail_msg: "Projeto Korp endpoint returned an unexpected payload."
+
+- name: Display Projeto Korp response
+  ansible.builtin.debug:
+    var: korp_response.json
+
+- name: Wait for Prometheus to become ready
+  ansible.builtin.uri:
+    url: http://127.0.0.1:9090/-/ready
+    method: GET
+    status_code: 200
+  register: prometheus_ready
+  retries: 30
+  delay: 2
+  until: prometheus_ready.status == 200
+
+- name: Wait for Grafana to become ready
+  ansible.builtin.uri:
+    url: http://127.0.0.1:3000/api/health
+    method: GET
+    return_content: true
+    status_code: 200
+  register: grafana_health
+  retries: 30
+  delay: 2
+  until:
+    - grafana_health.status == 200
+    - grafana_health.json.database == "ok"
+
+- name: Validate Prometheus target availability
+  ansible.builtin.uri:
+    url: >-
+      http://127.0.0.1:9090/api/v1/query?query=up%7Bjob%3D%22http-server-projeto-korp%22%7D%20%3D%3D%201
+    method: GET
+    return_content: true
+    status_code: 200
+  register: prometheus_target
+  retries: 15
+  delay: 2
+  until:
+    - prometheus_target.status == 200
+    - prometheus_target.json.status == "success"
+    - prometheus_target.json.data.result | length > 0
