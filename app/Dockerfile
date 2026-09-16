@@ -2,6 +2,7 @@ FROM golang:1.27.1-bookworm AS builder
 
 WORKDIR /src
 
+# Keep dependency download in its own layer so source-only changes reuse the module cache.
 COPY go.mod go.sum ./
 RUN go mod download
 
@@ -15,6 +16,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
 
 FROM debian:13.6-slim AS runtime
 
+# The runtime image contains only the compiled service and runs it as an unprivileged user.
 RUN groupadd --system --gid 10001 korp \
     && useradd \
         --system \

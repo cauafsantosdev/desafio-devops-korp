@@ -74,6 +74,7 @@
     state: started
     enabled: true
 
+# Compose declares korp-network as external, so this role owns its lifecycle.
 - name: Check Projeto Korp Docker network
   ansible.builtin.command:
     cmd: docker network inspect korp-network

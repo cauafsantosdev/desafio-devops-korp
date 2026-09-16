@@ -55,6 +55,7 @@
     GRAFANA_ADMIN_PASSWORD: "{{ grafana_admin_password }}"
   changed_when: false
 
+# Build from the copied source so the same playbook works on a clean host.
 - name: Build and start Projeto Korp stack
   ansible.builtin.command:
     cmd: docker compose up -d --build --remove-orphans
@@ -79,6 +80,7 @@
   ansible.builtin.debug:
     var: compose_ps.stdout_lines
 
+# Validate through NGINX instead of port 8080 to exercise the intended request path.
 - name: Wait for reverse proxy to become ready
   ansible.builtin.uri:
     url: http://127.0.0.1/healthz
@@ -132,6 +134,7 @@
     - grafana_health.status == 200
     - grafana_health.json.database == "ok"
 
+# Prometheus readiness only proves the process is up; this query proves the service is scraped.
 - name: Validate Prometheus target availability
   ansible.builtin.uri:
     url: >-

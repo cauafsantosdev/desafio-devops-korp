@@ -32,6 +32,7 @@ func init() {
 	prometheus.MustRegister(httpRequestsTotal, httpRequestDuration)
 }
 
+// statusResponseWriter captures the status code without changing handler behavior.
 type statusResponseWriter struct {
 	http.ResponseWriter
 	statusCode int
@@ -56,6 +57,7 @@ func (w *statusResponseWriter) Write(body []byte) (int, error) {
 
 func observeHTTP(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Prometheus scrapes are operational traffic and should not inflate application metrics.
 		if r.URL.Path == "/metrics" {
 			next.ServeHTTP(w, r)
 			return
@@ -81,6 +83,7 @@ func observeHTTP(next http.Handler) http.Handler {
 	})
 }
 
+// metricPath keeps the path label bounded so arbitrary URLs cannot create unbounded series.
 func metricPath(path string) string {
 	switch path {
 	case "/projeto-korp", "/healthz":

@@ -54,6 +54,7 @@ services:
 networks:
   korp-network:
     name: korp-network
+    # Ansible provisions this bridge network; Compose only consumes it.
     external: true
 
 volumes:
